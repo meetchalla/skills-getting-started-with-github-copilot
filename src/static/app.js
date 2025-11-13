@@ -29,13 +29,38 @@ document.addEventListener("DOMContentLoaded", () => {
               <strong>Participants:</strong>
               <ul class="participants-list">
                 ${details.participants.length > 0
-                  ? details.participants.map(p => `<li>${p}</li>`).join("")
+                  ? details.participants.map(p => `
+                      <li>
+                        <span>${p}</span>
+                        <button class="delete-participant" title="Remove participant" data-activity="${name}" data-email="${p}">&#10060;</button>
+                      </li>`).join("")
                   : '<li class="no-participants">No participants yet</li>'}
               </ul>
             </div>
           `;
 
         activitiesList.appendChild(activityCard);
+        // Add delete functionality to participant buttons
+        activityCard.querySelectorAll('.delete-participant').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const activity = btn.getAttribute('data-activity');
+            const email = btn.getAttribute('data-email');
+            try {
+              const res = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+                method: 'DELETE'
+              });
+              if (res.ok) {
+                btn.parentElement.remove();
+              } else {
+                const err = await res.json();
+                alert(err.detail || 'Failed to unregister participant.');
+              }
+            } catch (err) {
+              alert('Network error.');
+            }
+          });
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -70,6 +95,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities list to show new participant
+        await fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
